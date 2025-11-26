@@ -1,45 +1,40 @@
-require('dotenv').config();
-const { Pool } = require('pg'); 
-const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
-const fs = require('fs');
-const path = require('path');
-const humps = require('humps');
-
-// SSL config
-let sslConfig = false;
-
-if (process.env.DB_SSL === "true") {
-  try {
-    const sslDir = path.join(__dirname, "..", "config", "ssl");
-    sslConfig = {
-      rejectUnauthorized: true,
-      ca: fs.readFileSync(path.join(sslDir, "server-ca.pem"), "utf8"),
-      key: fs.readFileSync(path.join(sslDir, "client-key.pem"), "utf8"),
-      cert: fs.readFileSync(path.join(sslDir, "client-cert.pem"), "utf8"),
-    };
-    console.log("SSL ENABLED");
-  } catch (err) {
-    console.error("SSL ERROR:", err.message);
-    sslConfig = false;
-  }
-}
+// Detectar si es Unix Socket
+const isUnixSocket = process.env.DB_HOST && process.env.DB_HOST.startsWith('/cloudsql/');
 
 const poolConfig = {
-  ...(process.env.DB_SOCKET_PATH ? {
-    host: process.env.DB_SOCKET_PATH,
-  } : {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT || 5432,
-  }),
-  database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  ssl: sslConfig,
+  database: process.env.DB_NAME,
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
 };
+
+if (isUnixSocket) {
+  // Unix Socket
+  poolConfig.host = process.env.DB_HOST;
+  console.log('🔌 Conexión: Unix Socket');
+} else {
+  // TCP/IP
+  poolConfig.host = process.env.DB_HOST;
+  poolConfig.port = process.env.DB_PORT || 5432;
+  
+  if (process.env.DB_SSL === 'true') {
+    try {
+      const sslDir = path.join(__dirname, "..", "config", "ssl");
+      poolConfig.ssl = {
+        rejectUnauthorized: true,
+        ca: fs.readFileSync(path.join(sslDir, "server-ca.pem"), "utf8"),
+        key: fs.readFileSync(path.join(sslDir, "client-key.pem"), "utf8"),
+        cert: fs.readFileSync(path.join(sslDir, "client-cert.pem"), "utf8"),
+      };
+      console.log("🔐 SSL HABILITADO");
+    } catch (err) {
+      console.error("⚠️ SSL ERROR:", err.message);
+    }
+  }
+  console.log('🌐 Conexión: TCP/IP');
+}
 
 console.log(' DB Config:', {
   host: poolConfig.host || 'unix_socket',

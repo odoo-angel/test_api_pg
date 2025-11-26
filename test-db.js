@@ -2,17 +2,42 @@ require('dotenv').config();
 const { Pool } = require('pg');
 
 // Configuración para Unix Socket (Cloud SQL)
+// Detectar si es conexión Unix Socket o TCP
+const isUnixSocket = process.env.DB_HOST && process.env.DB_HOST.startsWith('/cloudsql/');
+
 const poolConfig = {
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  // Unix socket path para Cloud SQL
-  host: process.env.INSTANCE_UNIX_SOCKET || '/cloudsql/creekside-449220:us-central1:creekside-db',
-  // Configuración adicional
-  max: 5, // Máximo de conexiones en el pool
+  max: 5,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
 };
+
+// Configurar conexión según el tipo
+if (isUnixSocket) {
+  // Unix Socket (Cloud SQL en Cloud Run/Cloud Shell)
+  poolConfig.host = process.env.DB_HOST;
+  console.log('🔌 Modo: Unix Socket');
+} else {
+  // TCP (desarrollo local o IP pública)
+  poolConfig.host = process.env.DB_HOST;
+  poolConfig.port = process.env.DB_PORT || 5432;
+  
+  // SSL solo para TCP
+  if (process.env.DB_SSL === 'true') {
+    const fs = require('fs');
+    const path = require('path');
+    poolConfig.ssl = {
+      rejectUnauthorized: true,
+      ca: fs.readFileSync(path.join(__dirname, 'config', 'ssl', 'server-ca.pem')),
+      key: fs.readFileSync(path.join(__dirname, 'config', 'ssl', 'client-key.pem')),
+      cert: fs.readFileSync(path.join(__dirname, 'config', 'ssl', 'client-cert.pem')),
+    };
+    console.log('🔐 SSL Habilitado');
+  }
+  console.log('🌐 Modo: TCP/IP');
+}
 
 console.log('🔍 Configuración del Pool:');
 console.log('-----------------------------------');
