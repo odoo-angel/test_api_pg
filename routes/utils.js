@@ -1,6 +1,33 @@
-// Detectar si es Unix Socket
-const isUnixSocket = process.env.DB_HOST && process.env.DB_HOST.startsWith('/cloudsql/');
+require('dotenv').config();
+const { Pool } = require('pg'); 
+const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
+const fs = require('fs');
+const path = require('path');
+const humps = require('humps');
 
+// SSL config
+let sslConfig = false;
+
+const isUnixSocket = process.env.DB_HOST && process.env.DB_HOST.startsWith("/cloudsql/");
+
+if (process.env.DB_SSL === "true" && !isUnixSocket) {
+  try {
+    const sslDir = path.join(__dirname, "..", "config", "ssl");
+    sslConfig = {
+      rejectUnauthorized: true,
+      ca: fs.readFileSync(path.join(sslDir, "server-ca.pem"), "utf8"),
+      key: fs.readFileSync(path.join(sslDir, "client-key.pem"), "utf8"),
+      cert: fs.readFileSync(path.join(sslDir, "client-cert.pem"), "utf8"),
+    };
+    console.log("SSL ENABLED");
+  } catch (err) {
+    console.error("SSL ERROR:", err.message);
+    sslConfig = false;
+  }
+}
+
+// PostgreSQL pool
 const poolConfig = {
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
@@ -11,37 +38,19 @@ const poolConfig = {
 };
 
 if (isUnixSocket) {
-  // Unix Socket
   poolConfig.host = process.env.DB_HOST;
-  console.log('🔌 Conexión: Unix Socket');
+  console.log("[DB] Using Unix socket:", process.env.DB_HOST);
 } else {
-  // TCP/IP
   poolConfig.host = process.env.DB_HOST;
   poolConfig.port = process.env.DB_PORT || 5432;
-  
-  if (process.env.DB_SSL === 'true') {
-    try {
-      const sslDir = path.join(__dirname, "..", "config", "ssl");
-      poolConfig.ssl = {
-        rejectUnauthorized: true,
-        ca: fs.readFileSync(path.join(sslDir, "server-ca.pem"), "utf8"),
-        key: fs.readFileSync(path.join(sslDir, "client-key.pem"), "utf8"),
-        cert: fs.readFileSync(path.join(sslDir, "client-cert.pem"), "utf8"),
-      };
-      console.log("🔐 SSL HABILITADO");
-    } catch (err) {
-      console.error("⚠️ SSL ERROR:", err.message);
-    }
-  }
-  console.log('🌐 Conexión: TCP/IP');
+  poolConfig.ssl = sslConfig;
+  console.log(
+    "[DB] Using TCP host:",
+    process.env.DB_HOST,
+    "SSL enabled:",
+    !!sslConfig
+  );
 }
-
-console.log(' DB Config:', {
-  host: poolConfig.host || 'unix_socket',
-  database: poolConfig.database,
-  user: poolConfig.user,
-  ssl: !!poolConfig.ssl,
-});
 
 const pool = new Pool(poolConfig);
 
