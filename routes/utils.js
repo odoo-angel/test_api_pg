@@ -25,17 +25,38 @@ if (process.env.DB_SSL === "true") {
   }
 }
 
-// PostgreSQL pool
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT || 5432,
+const poolConfig = {
+  ...(process.env.DB_SOCKET_PATH ? {
+    host: process.env.DB_SOCKET_PATH,
+  } : {
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT || 5432,
+  }),
+  database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
   ssl: sslConfig,
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
+};
+
+console.log(' DB Config:', {
+  host: poolConfig.host || 'unix_socket',
+  database: poolConfig.database,
+  user: poolConfig.user,
+  ssl: !!poolConfig.ssl,
+});
+
+const pool = new Pool(poolConfig);
+
+// Manejar errores del pool
+pool.on('error', (err, client) => {
+  console.error('❌ Unexpected pool error:', err);
+});
+
+pool.on('connect', (client) => {
+  console.log('✅ Nueva conexión a BD establecida');
 });
 
 // camelCase → snake_case
@@ -81,6 +102,10 @@ pool.execute = async function (text, params) {
 const JWT_SECRET = process.env.JWT_SECRET;
 
 function generateJwtToken(user) {
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET no esta configurado');
+  }
+
   return jwt.sign(
     {
       id: user.id,
@@ -137,6 +162,19 @@ function requireRole(...roles) {
 
 function generateUUID() {
   return uuidv4();
+}
+
+// Helper to test DB connection
+async function testConnection() {
+  try {
+    const result = await pool.query('SELECT NOW() as now, version()');
+    console.log('Conexin a BD exitosa');
+    console.log('Server time:', result.rows[0].now);
+    return true;
+  } catch (error) {
+    console.error('Error de conexion a BD:', error.message);
+    return false;
+  }
 }
 
 module.exports = {
