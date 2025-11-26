@@ -1,3 +1,4 @@
+// routes/utils.js
 require("dotenv").config();
 const { Pool } = require("pg");
 const jwt = require("jsonwebtoken");
@@ -6,9 +7,11 @@ const fs = require("fs");
 const path = require("path");
 const humps = require("humps");
 
-const isUnixSocket = process.env.DB_HOST && process.env.DB_HOST.startsWith("/cloudsql/");
+// Detectar Unix socket vs TCP
+const isUnixSocket =
+  process.env.DB_HOST && process.env.DB_HOST.startsWith("/cloudsql/");
 
-// SSL
+// SSL solo para TCP
 let sslConfig = false;
 
 if (process.env.DB_SSL === "true" && !isUnixSocket) {
@@ -55,11 +58,11 @@ const pool = new Pool(poolConfig);
 
 // Manejar errores del pool
 pool.on('error', (err, client) => {
-  console.error('❌ Unexpected pool error:', err);
+  console.error('Unexpected pool error:', err);
 });
 
 pool.on('connect', (client) => {
-  console.log('✅ Nueva conexión a BD establecida');
+  console.log(' Nueva conexión a BD establecida');
 });
 
 // camelCase → snake_case
