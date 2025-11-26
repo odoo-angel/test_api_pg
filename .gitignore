@@ -31,3 +31,9 @@ coverage/
 # Build
 dist/
 build/
+
+cloud-sql-proxy
+test-db-*.js
+DEPLOYMENT.md
+DOCKER_RUN.md
+QUICKSTART.md

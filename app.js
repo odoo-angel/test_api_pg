@@ -88,7 +88,7 @@ passport.serializeUser((user, done) => {
 passport.deserializeUser(async (id, done) => {
   try {
     const [users] = await pool.execute('SELECT * FROM app_users WHERE id = ?', [id]);
-    done(null, users.rows[0]);
+    done(null, users[0] || null);
   } catch (error) {
     done(error, null);
   }
@@ -102,47 +102,37 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 
 // Verify database connection and create default admin user
 async function initializeDatabase() {
-  try {
-    // Test database connection
-    await pool.query('SELECT 1');
-    console.log('✅ Connected to PostgreSQL database');
+  const defaultAdminEmail = process.env.DEFAULT_ADMIN_EMAIL;
+  const defaultAdminPassword = process.env.DEFAULT_ADMIN_PASSWORD;
+  const defaultAdminFirstName = process.env.DEFAULT_ADMIN_FIRST_NAME;
+  const defaultAdminLastName = process.env.DEFAULT_ADMIN_LAST_NAME;
 
-    // Create default admin user if it doesn't exist
-    const defaultAdminEmail = process.env.DEFAULT_ADMIN_EMAIL || 'admin@creekside.com';
-    const defaultAdminPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'admin123';
-    const defaultAdminFirstName = process.env.DEFAULT_ADMIN_FIRST_NAME || 'Admin';
-    const defaultAdminLastName = process.env.DEFAULT_ADMIN_LAST_NAME || 'User';
+  const { rows: existingUsers } = await pool.query(
+    "SELECT * FROM app_users WHERE email = $1",
+    [defaultAdminEmail]
+  );
 
-    // Check if admin user exists
-    const [existingUsers] = await pool.query(
-      'SELECT * FROM app_users WHERE email = $1',
-      [defaultAdminEmail]
+  if (existingUsers.length === 0) {
+    const adminId = generateUUID();
+    const passwordHash = await bcrypt.hash(defaultAdminPassword, 12);
+
+    await pool.query(
+      `INSERT INTO app_users 
+       (id, email, first_name, last_name, password_hash, role, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        adminId,
+        defaultAdminEmail,
+        defaultAdminFirstName,
+        defaultAdminLastName,
+        passwordHash,
+        "admin",
+        1,
+      ]
     );
-
-    if (existingUsers.rows.length === 0) {
-      // Create default admin user
-      const adminId = generateUUID();
-      const passwordHash = await bcrypt.hash(defaultAdminPassword, 12);
-
-      await pool.query(
-        `INSERT INTO app_users 
-         (id, email, first_name, last_name, password_hash, role, is_active)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [adminId, defaultAdminEmail, defaultAdminFirstName, defaultAdminLastName, passwordHash, 'admin', 1]
-      );
-
-      console.log('✅ Default admin user created');
-      console.log(`   Email: ${defaultAdminEmail}`);
-      console.log(`   Password: ${defaultAdminPassword}`);
-      console.log('   ⚠️  Please change the default password after first login!');
-    } else {
-      console.log('✅ Default admin user already exists');
-    }
-  } catch (err) {
-    console.error('❌ Database initialization error:', err.message);
-    // Don't exit the process, but log the error
   }
 }
+
 
 // Routes
 /**
@@ -173,10 +163,10 @@ async function initializeDatabase() {
  */
 app.get('/health', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT 1 as healthy');
+    const { rows } = await pool.query('SELECT 1 as healthy');
     res.json({ status: 'healthy', database: 'connected', data: rows[0] });
   } catch (error) {
-    res.status(500).json({ status: 'unhealthy', error: error.message });
+    res.status(500).json({ status: 'unhealthy', database: "error", error: error.message });
   }
 });
 
@@ -239,6 +229,19 @@ async function startServer() {
     process.exit(1);
   }
 }
+
+app.set("trust proxy", 1); 
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      sameSite: "lax",
+    },
+  })
+);
 
 // Start the server
 startServer();
