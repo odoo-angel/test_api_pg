@@ -71,7 +71,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Session configuration
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key-change-this',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false
 }));
@@ -87,7 +87,7 @@ passport.serializeUser((user, done) => {
 
 passport.deserializeUser(async (id, done) => {
   try {
-    const [users] = await pool.execute('SELECT * FROM app_users WHERE id = $1', [id]);
+    const [users] = await pool.execute('SELECT * FROM app_users WHERE id = ?', [id]);
     done(null, users.rows[0]);
   } catch (error) {
     done(error, null);
