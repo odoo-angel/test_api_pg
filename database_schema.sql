@@ -56,6 +56,8 @@ CREATE INDEX idx_users_role  ON app_users(role);
 CREATE INDEX idx_users_email ON app_users(email);
 
 -- Projects (construction projects / fraccionamientos / desarrollos)
+-- thrid merge point - removed prototype for houses since it's the same as model: removed prototype column
+-- fifth merge point - added lastUpdatedAt field to projects: added last_updated_at column
 CREATE TABLE app_projects (
     id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title            TEXT NOT NULL,
@@ -119,6 +121,18 @@ BEFORE UPDATE ON app_users
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at();
 
+-- second merge point - added last_updated_at column to house_activties table: added trigger for app_projects
+CREATE TRIGGER trg_houses_activities_updated_at
+BEFORE UPDATE ON app_house_activities 
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER trg_projects_updated_at
+BEFORE UPDATE ON app_projects   
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at();
+
+
 -- Master list of activities (workflow definition)
 CREATE TABLE app_activities (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -136,6 +150,7 @@ CREATE INDEX        idx_activities_phase        ON app_activities(phase, sub_pha
 CREATE INDEX        idx_activities_is_active    ON app_activities(is_active);
 
 -- House-specific activities (instantiated from the master list)
+-- second merge point - added last_updated_at column to house_activties table: added last_updated_at column
 CREATE TABLE app_house_activities (
     id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     house_id         UUID NOT NULL,
@@ -160,6 +175,7 @@ CREATE TABLE app_house_activities (
     rejected_remarks TEXT,
     is_blocked       BOOLEAN NOT NULL DEFAULT FALSE,
     created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     CONSTRAINT fk_house_activities_house
       FOREIGN KEY (house_id)

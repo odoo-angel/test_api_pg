@@ -59,6 +59,7 @@ router.get("/", authenticateJwt, async (req, res) => {
     const params = [];
     let query;
 
+    // thrid merge point - removed prototype for houses since it's the same as model: removed prototype column
     if (includeProjectData) {
       query = `
         SELECT
@@ -135,7 +136,8 @@ router.get("/", authenticateJwt, async (req, res) => {
       : " ORDER BY created_at DESC";
 
     const { rows } = await pool.query(query, params);
-
+    
+    // thrid merge point - removed prototype for houses since it's the same as model: removed prototype column
     if (includeProjectData) {
       const transformedHouses = rows.map((house) => {
         const result = {
@@ -181,6 +183,7 @@ router.get("/", authenticateJwt, async (req, res) => {
   }
 });
 
+// first merge point: added stats routes
 /**
  * @swagger
  * /api/houses/stats:
@@ -214,6 +217,7 @@ router.get("/", authenticateJwt, async (req, res) => {
  */
 router.get("/stats", authenticateJwt, async (req, res) => {
   try {
+    // added stats routes: added quotation marks to alias names to avoid camelCase conversion issues
     const query = `
       SELECT
         COUNT(*) AS "totalHouses",
@@ -221,7 +225,7 @@ router.get("/stats", authenticateJwt, async (req, res) => {
         SUM(CASE WHEN status <> 'completed' THEN 1 ELSE 0 END) AS "activeHouses"
       FROM app_houses
     `;
-
+    // added stats routes: change to pool.query, from pool.execute to avoid camelCase conversion issues
     const { rows } = await pool.query(query);
     const stats = rows[0] || {
       totalHouses: 0,
@@ -341,6 +345,7 @@ router.get("/:id", authenticateJwt, async (req, res) => {
     }
 
     // Transform result if project is included
+    // thrid merge point - removed prototype for houses since it's the same as model: removed prototype column
     if (includeProjectData) {
       const house = rows[0];
       const result = {
@@ -383,6 +388,7 @@ router.get("/:id", authenticateJwt, async (req, res) => {
   }
 });
 
+// fourth merge point - house progress is now automatically calculated: progress calculation moved to house-activities.js
 /**
  * @swagger
  * /api/houses:
@@ -420,10 +426,6 @@ router.get("/:id", authenticateJwt, async (req, res) => {
  *                 type: string
  *                 enum: [in_progress, completed, delayed]
  *                 default: in_progress
- *               progress:
- *                 type: number
- *                 example: 45.5
- *                 description: Progress percentage (0-100)
  *               description:
  *                 type: string
  *                 example: A beautiful house with modern design
@@ -461,7 +463,9 @@ router.post(
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
-
+      
+      // thrid merge point - removed prototype for houses since it's the same as model: removed prototype column
+      // fourth merge point - house progress is now automatically calculated: remove progress
       const {
         projectId,
         coto,
@@ -469,7 +473,6 @@ router.post(
         houseName,
         model,
         status = "in_progress",
-        progress,
         description,
         houseImage,
         m2const,
@@ -500,6 +503,7 @@ router.post(
       }
 
       // Create house
+      // thrid merge point - removed prototype for houses since it's the same as model: removed prototype column
       const houseId = generateUUID();
       await client.query(
         `INSERT INTO app_houses
@@ -512,12 +516,12 @@ router.post(
           finalName || null,
           model || null,
           status,
-          progress !== undefined ? progress : 0.0,
+          0.0, //progress
           description || null,
           houseImage || null,
           m2const || null,
-          0,
-          0,
+          0, // comopleted_activities
+          0, // total_activities
         ]
       );
 
@@ -578,6 +582,7 @@ router.post(
       await client.query("COMMIT");
 
       // Fetch created house
+      // thrid merge point - removed prototype for houses since it's the same as model: removed prototype column
       const { rows: houses } = await pool.query(
         `SELECT
            id,
@@ -649,9 +654,6 @@ router.post(
  *               status:
  *                 type: string
  *                 enum: [in_progress, completed, delayed]
- *               progress:
- *                 type: number
- *                 description: Progress percentage (0-100)
  *               description:
  *                 type: string
  *               houseImage:
@@ -691,6 +693,8 @@ router.put(
   async (req, res) => {
     try {
       const { id } = req.params;
+      // thrid merge point - removed prototype for houses since it's the same as model: removed prototype column
+      // fourth merge point - house progress is now automatically calculated: removed progress
       const {
         projectId,
         coto,
@@ -698,7 +702,6 @@ router.put(
         houseName,
         model,
         status,
-        progress,
         description,
         houseImage,
         m2const,
@@ -733,7 +736,8 @@ router.put(
 
       const updates = [];
       const values = [];
-
+      // thrid merge point - removed prototype for houses since it's the same as model: removed prototype if condition
+      // fourth merge point - house progress is now automatically calculated: removed progress if condition
       if (projectId !== undefined) {
         values.push(projectId || null);
         updates.push(`project_id = $${values.length}`);
@@ -756,10 +760,6 @@ router.put(
         }
         values.push(status);
         updates.push(`status = $${values.length}`);
-      }
-      if (progress !== undefined) {
-        values.push(progress);
-        updates.push(`progress = $${values.length}`);
       }
       if (description !== undefined) {
         values.push(description || null);
@@ -800,6 +800,15 @@ router.put(
       const previousProjectId = existing[0].projectId;
       const newProjectId =
         projectId !== undefined ? projectId || null : previousProjectId;
+
+      // fourth merge point - house progress is now automatically calculated: progress calculation moved to house-activities.js
+      // Compute progress as completed / total * 100
+      let computedProgress = 0; 
+      if (newTotalActivities > 0) {
+        computedProgress = (newCompletedActivities / newTotalActivities) * 100;
+      }
+      updates.push("progress = ?");
+      values.push(computedProgress);
 
       let newHouseStatus = currentStatus;
       if (status === undefined) {
@@ -867,6 +876,7 @@ router.put(
         }
       }
 
+      // thrid merge point - removed prototype for houses since it's the same as model: removed prototype column
       const { rows: houses } = await pool.query(
         `SELECT
            id,

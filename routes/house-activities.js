@@ -39,6 +39,8 @@ const { pool, authenticateJwt, requireRole, generateUUID } = require("./utils");
 router.get("/", authenticateJwt, async (req, res) => {
   try {
     const { houseId, isBlocked, status } = req.query;
+    // first merge point - added stats routes: added rejectedRemarks to select list
+    // fourth merge point - house progress is now automatically calculated: changed open_date to last_updated_at
     let query = `
       SELECT
         ha.id,
@@ -94,7 +96,8 @@ router.get("/", authenticateJwt, async (req, res) => {
     query += " ORDER BY num ASC";
 
     const { rows: houseActivities } = await pool.query(query, params);
-
+    // first merge point - added stats routes: added rejectedRemarks to response object
+    // fourth merge point - house progress is now automatically calculated: changed lastUpdate to lastUpdatedAt
     const transformedHouseActivities = houseActivities.map((ha) => ({
       id: ha.id,
       phase: ha.phase,
@@ -118,6 +121,7 @@ router.get("/", authenticateJwt, async (req, res) => {
   }
 });
 
+// first merge point - added stats routes: new swagger doc and route
 /**
  * @swagger
  * /api/house-activities/stats:
@@ -209,6 +213,8 @@ router.get("/stats", authenticateJwt, async (req, res) => {
 router.get("/:id", authenticateJwt, async (req, res) => {
   try {
     const { id } = req.params;
+    // first merge point - added stats routes: added rejectedRemarks to select list
+    // second merge point - added last_updated_at column to house_activties table: changed open_date to last_updated_at
     const { rows: houseActivities } = await pool.query(
       `SELECT
          ha.id,
@@ -238,6 +244,8 @@ router.get("/:id", authenticateJwt, async (req, res) => {
       return res.status(404).json({ error: "House activity not found" });
     }
     const ha = houseActivities[0];
+    // first merge point - added stats routes: added rejectedRemarks to response object
+    // second merge point - added last_updated_at column to house_activties table: changed lastUpdated field
     const result = {
       id: ha.id,
       phase: ha.phase,
@@ -249,7 +257,7 @@ router.get("/:id", authenticateJwt, async (req, res) => {
       remarks: ha.remarks,
       rejectedRemarks: ha.rejectedRemarks,
       description: ha.description,
-      lastUpdatedAt: ha.lastUpdated,
+      lastUpdatedAt: ha.lastUpdatedAt,
       project: ha.project,
       houseName: ha.houseName,
       visible: !ha.isBlocked,
@@ -523,6 +531,7 @@ router.put("/:id", authenticateJwt, async (req, res) => {
         const totalActivities = houseInfo[0].totalActivities;
         const previousHouseStatus = houseInfo[0].status;
 
+        // fourth merge point - house progress is now automatically calculated: progress calculation
         // Compute progress = completed / total * 100
         let progress = 0;
         if (totalActivities > 0) {
@@ -530,6 +539,7 @@ router.put("/:id", authenticateJwt, async (req, res) => {
         }
 
         // Update house completedActivities and progress
+        // fourth merge point - house progress is now automatically calculated: added progress update
         await pool.query(
           "UPDATE app_houses SET completed_activities = $1, progress = $2 WHERE id = $3",
           [completedActivities, progress, houseId]

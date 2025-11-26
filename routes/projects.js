@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { pool, authenticateJwt, requireRole, generateUUID } = require("./utils");
 
+// fifth merge point - added lastUpdatedAt field to projects: added lastUpdatedAt handling in create and update
 /**
  * @swagger
  * /api/projects:
@@ -80,6 +81,7 @@ router.get("/", authenticateJwt, async (req, res) => {
   }
 });
 
+// fifth merge point - added lastUpdatedAt field to projects: added lastUpdatedAt handling in create and update
 /**
  * @swagger
  * /api/projects/{id}:
