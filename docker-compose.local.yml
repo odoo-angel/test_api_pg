@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: creekside-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: creekside_user
+      POSTGRES_PASSWORD: creekside_password
+      POSTGRES_DB: creekside_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./pg_database_schema.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U creekside_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: creekside-api-local
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      
+      # LOCAL DB
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: creekside_user
+      DB_PASSWORD: creekside_password
+      DB_NAME: creekside_db
+      DB_SSL: false
+
+      # AUTH
+      SESSION_SECRET: your-local-secret
+      JWT_SECRET: your-local-jwt
+
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
+    driver: local

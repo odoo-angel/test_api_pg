@@ -1,0 +1,12 @@
+[
+  {
+    "origin": [
+      "http://localhost:5173",
+      "https://constructionsurveyapp-94395.web.app",
+      "https://constructionsurveyapp-94395.firebaseapp.com"
+    ],
+    "method": ["GET", "HEAD", "PUT", "POST"],
+    "responseHeader": ["Content-Type", "x-goog-meta-userid"],
+    "maxAgeSeconds": 3600
+  }
+]
