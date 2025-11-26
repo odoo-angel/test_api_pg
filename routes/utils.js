@@ -1,15 +1,15 @@
-require('dotenv').config();
-const { Pool } = require('pg'); 
-const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
-const fs = require('fs');
-const path = require('path');
-const humps = require('humps');
-
-// SSL config
-let sslConfig = false;
+require("dotenv").config();
+const { Pool } = require("pg");
+const jwt = require("jsonwebtoken");
+const { v4: uuidv4 } = require("uuid");
+const fs = require("fs");
+const path = require("path");
+const humps = require("humps");
 
 const isUnixSocket = process.env.DB_HOST && process.env.DB_HOST.startsWith("/cloudsql/");
+
+// SSL
+let sslConfig = false;
 
 if (process.env.DB_SSL === "true" && !isUnixSocket) {
   try {
@@ -20,14 +20,13 @@ if (process.env.DB_SSL === "true" && !isUnixSocket) {
       key: fs.readFileSync(path.join(sslDir, "client-key.pem"), "utf8"),
       cert: fs.readFileSync(path.join(sslDir, "client-cert.pem"), "utf8"),
     };
-    console.log("SSL ENABLED");
+    console.log("[DB] SSL ENABLED");
   } catch (err) {
-    console.error("SSL ERROR:", err.message);
+    console.error("[DB] SSL ERROR:", err.message);
     sslConfig = false;
   }
 }
 
-// PostgreSQL pool
 const poolConfig = {
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
@@ -38,7 +37,7 @@ const poolConfig = {
 };
 
 if (isUnixSocket) {
-  poolConfig.host = process.env.DB_HOST;
+  poolConfig.host = process.env.DB_HOST; 
   console.log("[DB] Using Unix socket:", process.env.DB_HOST);
 } else {
   poolConfig.host = process.env.DB_HOST;
@@ -91,15 +90,12 @@ pool.execute = async function (text, params) {
   const quoted = replaced.replace(/`/g, '"');
   const finalSql = camelToSnakeCaseInQuery(quoted);
 
-  console.log("SQL:", finalSql);
-
-  try {
-    const res = await pool.query(finalSql, params || []);
-    return [humps.camelizeKeys(res.rows), res.fields];
-  } catch (err) {
-    console.error("SQL ERROR:", err.message);
-    throw err;
+  if (process.env.NODE_ENV !== "production") {
+    console.log("SQL:", finalSql);
   }
+
+  const res = await pool.query(finalSql, params || []);
+  return [humps.camelizeKeys(res.rows), res.fields];
 };
 
 // JWT
