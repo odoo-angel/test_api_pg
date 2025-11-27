@@ -17,7 +17,7 @@ COPY . .
 EXPOSE 3000
 
 # Set environment variables
-ENV NODE_ENV=dev
+ENV NODE_ENV=production
 
 # Start the application
 CMD ["node", "app.js"]
