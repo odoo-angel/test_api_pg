@@ -70,11 +70,19 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Session configuration
-app.use(session({
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false
-}));
+app.set("trust proxy", 1); 
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      sameSite: "lax",
+    },
+  })
+);
+
 
 // Initialize Passport
 app.use(passport.initialize());
@@ -229,19 +237,6 @@ async function startServer() {
     process.exit(1);
   }
 }
-
-app.set("trust proxy", 1); 
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      sameSite: "lax",
-    },
-  })
-);
 
 // Start the server
 startServer();
