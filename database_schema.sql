@@ -121,18 +121,6 @@ BEFORE UPDATE ON app_users
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at();
 
--- second merge point - added last_updated_at column to house_activties table: added trigger for app_projects
-CREATE TRIGGER trg_houses_activities_updated_at
-BEFORE UPDATE ON app_house_activities 
-FOR EACH ROW
-EXECUTE FUNCTION update_updated_at();
-
-CREATE TRIGGER trg_projects_updated_at
-BEFORE UPDATE ON app_projects   
-FOR EACH ROW
-EXECUTE FUNCTION update_updated_at();
-
-
 -- Master list of activities (workflow definition)
 CREATE TABLE app_activities (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -207,6 +195,27 @@ CREATE INDEX idx_house_activities_activity_id   ON app_house_activities(activity
 CREATE INDEX idx_house_activities_status        ON app_house_activities(status);
 CREATE INDEX idx_house_activities_app_user      ON app_house_activities(app_user_id);
 CREATE INDEX idx_house_activities_approved_by   ON app_house_activities(approved_by_id);
+
+-- second merge point - added last_updated_at column to house_activties table: added trigger for app_projects
+-- Triggers to update last_updated_at timestamp
+CREATE OR REPLACE FUNCTION update_last_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.last_updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_houses_activities_last_updated_at
+BEFORE UPDATE ON app_house_activities 
+FOR EACH ROW
+EXECUTE FUNCTION update_last_updated_at();
+
+CREATE TRIGGER trg_projects_last_updated_at
+BEFORE UPDATE ON app_projects   
+FOR EACH ROW
+EXECUTE FUNCTION update_last_updated_at();
+
 
 -- Images linked to house activities
 CREATE TABLE app_images (
