@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const { pool, authenticateJwt, requireRole, generateUUID } = require("./utils");
 
-// fifth merge point - added lastUpdatedAt field to projects: added lastUpdatedAt handling in create and update
 /**
  * @swagger
  * /api/projects:
@@ -57,7 +56,7 @@ const { pool, authenticateJwt, requireRole, generateUUID } = require("./utils");
  *                         type: string
  *                         format: date-time
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized JWT token - missing or invalid
  *       500:
  *         description: Server error
  */
@@ -81,7 +80,6 @@ router.get("/", authenticateJwt, async (req, res) => {
   }
 });
 
-// fifth merge point - added lastUpdatedAt field to projects: added lastUpdatedAt handling in create and update
 /**
  * @swagger
  * /api/projects/{id}:
@@ -133,7 +131,7 @@ router.get("/", authenticateJwt, async (req, res) => {
  *                       type: string
  *                       format: date-time
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized JWT token
  *       404:
  *         description: Project not found
  *       500:
@@ -213,7 +211,7 @@ router.get("/:id", authenticateJwt, async (req, res) => {
  *       400:
  *         description: Invalid input or missing required fields
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized JWT token
  *       403:
  *         description: Forbidden - Admin or Reviewer role required
  *       500:
@@ -351,7 +349,7 @@ router.post(
  *       400:
  *         description: Invalid input
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized JWT token
  *       403:
  *         description: Forbidden - Admin or Reviewer role required
  *       404:
@@ -389,7 +387,13 @@ router.put(
       const updates = [];
       const values = [];
 
+      // Fix Bug: Validate title if provided empty string  
       if (title !== undefined) {
+        if (typeof title !== "string" || title.trim() === "") {
+          return res
+            .status(400)
+            .json({ error: "title is required and cannot be empty" });
+        }
         updates.push("title = ?");
         values.push(title);
       }
@@ -493,7 +497,7 @@ router.put(
  *                   type: string
  *                   example: Project deleted successfully
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized JWT token
  *       403:
  *         description: Forbidden - Admin role required
  *       404:

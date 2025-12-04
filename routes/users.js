@@ -39,6 +39,10 @@ const { pool, authenticateJwt, requireRole, generateUUID } = require("./utils");
  *                       role: { type: string }
  *                       isActive: { type: boolean }
  *                       createdAt: { type: string, format: date-time }
+ *       403:
+ *         description: Forbidden user
+ *       500:
+ *         description: Server error 
  */
 router.get("/", authenticateJwt, requireRole("admin"), async (req, res) => {
   try {
@@ -130,7 +134,7 @@ router.get("/:id", authenticateJwt, async (req, res) => {
  *               userImage: { type: string, example: "https://cdn.example.com/u/jane.jpg" }
  *     responses:
  *       201:
- *         description: Created
+ *         description: Created successfully
  *         content:
  *           application/json:
  *             schema:
@@ -147,6 +151,12 @@ router.get("/:id", authenticateJwt, async (req, res) => {
  *                     role: { type: string }
  *                     isActive: { type: boolean }
  *                     createdAt: { type: string, format: date-time }
+ *       400:
+ *         description: Missing required fields or invalid role
+ *       409:
+ *         description: Email already exists
+ *       500:
+ *         description: Server error  
  */
 router.post("/", authenticateJwt, requireRole("admin"), async (req, res) => {
   try {
@@ -329,6 +339,7 @@ router.put("/:id", authenticateJwt, async (req, res) => {
  *         schema: { type: string }
  *     responses:
  *       200: { description: Deleted }
+ *       403: { description: Forbidden }
  *       404: { description: Not found }
  */
 router.delete(

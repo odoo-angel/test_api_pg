@@ -241,8 +241,10 @@ router.post("/register", async (req, res) => {
  *
  *       400:
  *         description: Missing required fields or invalid role
- *       409:
- *         description: Email already registered
+ *      401:
+ *         description: Invalid credentials
+ *      403:
+ *         description: Account is inactive
  *       500:
  *         description: Server error
  */
@@ -259,7 +261,6 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
 
     // Optional: block inactive accounts
-    // first merge point: added isActive check before password verification
     if (!rows[0].isActive) 
       return res.status(403).json({ error: 'Account is inactive' });
 

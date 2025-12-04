@@ -59,7 +59,6 @@ router.get("/", authenticateJwt, async (req, res) => {
     const params = [];
     let query;
 
-    // thrid merge point - removed prototype for houses since it's the same as model: removed prototype column
     if (includeProjectData) {
       query = `
         SELECT
@@ -137,7 +136,6 @@ router.get("/", authenticateJwt, async (req, res) => {
 
     const { rows } = await pool.query(query, params);
     
-    // thrid merge point - removed prototype for houses since it's the same as model: removed prototype column
     if (includeProjectData) {
       const transformedHouses = rows.map((house) => {
         const result = {
@@ -183,7 +181,6 @@ router.get("/", authenticateJwt, async (req, res) => {
   }
 });
 
-// first merge point: added stats routes
 /**
  * @swagger
  * /api/houses/stats:
@@ -345,7 +342,6 @@ router.get("/:id", authenticateJwt, async (req, res) => {
     }
 
     // Transform result if project is included
-    // thrid merge point - removed prototype for houses since it's the same as model: removed prototype column
     if (includeProjectData) {
       const house = rows[0];
       const result = {
@@ -388,7 +384,6 @@ router.get("/:id", authenticateJwt, async (req, res) => {
   }
 });
 
-// fourth merge point - house progress is now automatically calculated: progress calculation moved to house-activities.js
 /**
  * @swagger
  * /api/houses:
@@ -464,8 +459,6 @@ router.post(
     try {
       await client.query("BEGIN");
       
-      // thrid merge point - removed prototype for houses since it's the same as model: removed prototype column
-      // fourth merge point - house progress is now automatically calculated: remove progress
       const {
         projectId,
         coto,
@@ -503,7 +496,6 @@ router.post(
       }
 
       // Create house
-      // thrid merge point - removed prototype for houses since it's the same as model: removed prototype column
       const houseId = generateUUID();
       await client.query(
         `INSERT INTO app_houses
@@ -526,8 +518,9 @@ router.post(
       );
 
       // Get all active activities from master list
+      // Fixed bug: changed is_active to TRUE for proper boolean comparison
       const { rows: activities } = await client.query(
-        "SELECT * FROM app_activities WHERE is_active = 1 ORDER BY num ASC"
+        "SELECT * FROM app_activities WHERE is_active = TRUE ORDER BY num ASC"
       );
 
       if (!activities || activities.length === 0) {
@@ -582,7 +575,6 @@ router.post(
       await client.query("COMMIT");
 
       // Fetch created house
-      // thrid merge point - removed prototype for houses since it's the same as model: removed prototype column
       const { rows: houses } = await pool.query(
         `SELECT
            id,
@@ -693,8 +685,6 @@ router.put(
   async (req, res) => {
     try {
       const { id } = req.params;
-      // thrid merge point - removed prototype for houses since it's the same as model: removed prototype column
-      // fourth merge point - house progress is now automatically calculated: removed progress
       const {
         projectId,
         coto,
@@ -736,8 +726,6 @@ router.put(
 
       const updates = [];
       const values = [];
-      // thrid merge point - removed prototype for houses since it's the same as model: removed prototype if condition
-      // fourth merge point - house progress is now automatically calculated: removed progress if condition
       if (projectId !== undefined) {
         values.push(projectId || null);
         updates.push(`project_id = $${values.length}`);
@@ -801,7 +789,6 @@ router.put(
       const newProjectId =
         projectId !== undefined ? projectId || null : previousProjectId;
 
-      // fourth merge point - house progress is now automatically calculated: progress calculation moved to house-activities.js
       // Compute progress as completed / total * 100
       let computedProgress = 0; 
       if (newTotalActivities > 0) {
@@ -876,7 +863,6 @@ router.put(
         }
       }
 
-      // thrid merge point - removed prototype for houses since it's the same as model: removed prototype column
       const { rows: houses } = await pool.query(
         `SELECT
            id,
