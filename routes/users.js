@@ -127,6 +127,7 @@ router.get("/:id", authenticateJwt, async (req, res) => {
  *             required: [email, firstName, lastName, role]
  *             properties:
  *               email: { type: string, format: email }
+ *               password: { type: string, format: password }
  *               firstName: { type: string }
  *               lastName: { type: string }
  *               role: { type: string, enum: [surveyor, reviewer, admin], default: surveyor }
@@ -159,36 +160,40 @@ router.get("/:id", authenticateJwt, async (req, res) => {
  *         description: Server error  
  */
 router.post("/", authenticateJwt, requireRole("admin"), async (req, res) => {
+  // Added password field to request body
   try {
     const {
       email,
+      password,
       firstName,
       lastName,
       role = "surveyor",
       isActive = true,
       userImage = null,
     } = req.body;
-    if (!email || !firstName || !lastName) {
+    if (!firstName || !lastName || !email || !password || !role) {
       return res
         .status(400)
-        .json({ error: "email, firstName and lastName are required" });
+        .json({ error: "firstName, lastName, email, password, and role are required" });
     }
     if (!["surveyor", "reviewer", "admin"].includes(role)) {
       return res
         .status(400)
         .json({ error: "Invalid role. Must be surveyor, reviewer, or admin" });
     }
-
+    
+    const pwdHash = await bcrypt.hash(password, 12);
+  
     const id = generateUUID();
     const active = !!isActive;
     await pool.execute(
-      `INSERT INTO app_users (id, email, firstName, lastName, userImage, role, isActive)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, email, firstName, lastName, userImage, role, active]
+      `INSERT INTO app_users (id, email, firstName, lastName, userImage, passwordHash, role, isActive)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, email, firstName, lastName, userImage, pwdHash, role, active]
     );
 
     const [rows] = await pool.execute(
-      `SELECT id, email, firstName, lastName, userImage, role, isActive, createdAt
+      `SELECT id, email, firstName, lastName, userImage, passwordHash, role, isActive, createdAt
          FROM app_users
         WHERE id = ?`,
       [id]
