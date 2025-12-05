@@ -193,7 +193,7 @@ router.post("/", authenticateJwt, requireRole("admin"), async (req, res) => {
     );
 
     const [rows] = await pool.execute(
-      `SELECT id, email, firstName, lastName, userImage, passwordHash, role, isActive, createdAt
+      `SELECT id, email, firstName, lastName, userImage, role, isActive, createdAt
          FROM app_users
         WHERE id = ?`,
       [id]
