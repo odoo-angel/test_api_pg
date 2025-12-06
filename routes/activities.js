@@ -129,7 +129,7 @@ router.get("/:id", authenticateJwt, async (req, res) => {
  *               - subPhase
  *             properties:
  *               num:
- *                 type: string
+ *                 type: integer
  *               phase:
  *                 type: string
  *               subPhase:
@@ -300,6 +300,13 @@ router.put(
         description,
         isActive,
       } = req.body;
+
+      // Validate required fields
+      if (!num || !phase || !subPhase || !activity) {
+        return res.status(400).json({
+          error: "num, phase, subPhase and activity are required",
+        });
+      }
 
       // Check if activity exists
       const { rows: existing } = await pool.query(
